@@ -1,0 +1,20 @@
+#Variaveis de ambiente
+*.env
+
+# Binarios
+*.exe
+*.dil
+*.so
+*.dylib
+
+#Testes Binarios
+*.test
+
+#Coverage
+*.out
+
+#Chaves de segurança
+*.pem
+
+# Ignore uploads directories
+uploads/

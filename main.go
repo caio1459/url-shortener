@@ -12,7 +12,7 @@ import (
 func main() {
 	repo := mongo.NewMongoURLRepository(config.DB)
 	usecase := usecases.NewURLUsecase(repo)
-	controller := controllers.NewURLContoller(usecase)
+	controller := controllers.NewURLController(usecase)
 
 	r := gin.Default()
 	r.POST("/shorten", controller.Shorten)

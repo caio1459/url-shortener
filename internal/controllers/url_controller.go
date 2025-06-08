@@ -4,20 +4,20 @@ import (
 	"net/http"
 	"time"
 	"url-shortener/internal/dtos"
-	"url-shortener/internal/usecases"
+	"url-shortener/internal/interfaces"
 
 	"github.com/gin-gonic/gin"
 )
 
-type URLContoller struct {
-	uc *usecases.URLUsecase
+type URLController struct {
+	uc interfaces.URLUsecase
 }
 
-func NewURLContoller(uc *usecases.URLUsecase) *URLContoller {
-	return &URLContoller{uc: uc}
+func NewURLController(uc interfaces.URLUsecase) *URLController {
+	return &URLController{uc: uc}
 }
 
-func (c *URLContoller) Shorten(ctx *gin.Context) {
+func (c *URLController) Shorten(ctx *gin.Context) {
 	var req dtos.URLRequest
 	if err := ctx.BindJSON(&req); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request"})
@@ -33,7 +33,7 @@ func (c *URLContoller) Shorten(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"short_url": ctx.Request.Host + "/" + slug})
 }
 
-func (c *URLContoller) Redirect(ctx *gin.Context) {
+func (c *URLController) Redirect(ctx *gin.Context) {
 	slug := ctx.Param("slug")
 	url, err := c.uc.Resolve(slug)
 	if err != nil {

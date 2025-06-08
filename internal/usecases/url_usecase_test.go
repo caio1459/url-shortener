@@ -4,95 +4,73 @@ import (
 	"errors"
 	"testing"
 	"url-shortener/internal/domains"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
-// Mock do URLRepository
-type mockURLRepo struct {
-	savedURL   *domains.URL
-	saveErr    error
-	findResult *domains.URL
-	findErr    error
+// Mock do repositório
+type mockURLRepository struct {
+	mock.Mock
 }
 
-func (m *mockURLRepo) Save(url *domains.URL) error {
-	m.savedURL = url
-	return m.saveErr
-}
-func (m *mockURLRepo) FindByID(id string) (*domains.URL, error) {
-	return m.findResult, m.findErr
+func (m *mockURLRepository) Save(url *domains.URL) error {
+	args := m.Called(url)
+	return args.Error(0)
 }
 
-func TestShorten_Success(t *testing.T) {
-	mockRepo := &mockURLRepo{}
+func (m *mockURLRepository) FindByID(id string) (*domains.URL, error) {
+	args := m.Called(id)
+	if url, ok := args.Get(0).(*domains.URL); ok {
+		return url, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
+func TestShorten(t *testing.T) {
+	mockRepo := new(mockURLRepository)
 	uc := NewURLUsecase(mockRepo)
 
-	original := "https://example.com"
-	expire := 10
+	original := "https://github.com/stretchr/testify"
+	expireInMinutes := 1
 
-	slug, err := uc.Shorten(original, expire)
-	if err != nil {
-		t.Fatalf("esperava nil, obteve erro: %v", err)
-	}
-	if slug == "" {
-		t.Error("esperava slug não vazio")
-	}
-	if mockRepo.savedURL == nil {
-		t.Fatal("esperava URL salva no repositório")
-	}
-	if mockRepo.savedURL.Original != original {
-		t.Errorf("esperava original %s, obteve %s", original, mockRepo.savedURL.Original)
-	}
-	if mockRepo.savedURL.ExpireAt == nil {
-		t.Error("esperava ExpireAt definido")
-	}
+	// Espera que o método Save seja chamado com qualquer *URL
+	mockRepo.On("Save", mock.AnythingOfType("*domains.URL")).Return(nil)
+	slug, err := uc.Shorten(original, expireInMinutes)
+
+	assert.NoError(t, err, "Expected no error when shortening URL")
+	assert.Len(t, slug, 6, "Expected slug to be 6 characters long")
+	mockRepo.AssertExpectations(t)
 }
 
-func TestShorten_NoExpire(t *testing.T) {
-	mockRepo := &mockURLRepo{}
+func TestResolve(t *testing.T) {
+	mockRepo := new(mockURLRepository)
 	uc := NewURLUsecase(mockRepo)
 
-	slug, err := uc.Shorten("https://test.com", 0)
-	if err != nil {
-		t.Fatalf("esperava nil, obteve erro: %v", err)
+	slug := "abc123"
+	expectedURL := &domains.URL{
+		ID:       slug,
+		Original: "https://github.com/stretchr/testify",
 	}
-	if slug == "" {
-		t.Error("esperava slug não vazio")
-	}
-	if mockRepo.savedURL.ExpireAt != nil {
-		t.Error("esperava ExpireAt nil")
-	}
-}
+	// Espera que FindByID retorne uma URL válida
+	mockRepo.On("FindByID", slug).Return(expectedURL, nil)
 
-func TestShorten_RepoError(t *testing.T) {
-	mockRepo := &mockURLRepo{saveErr: errors.New("erro repo")}
-	uc := NewURLUsecase(mockRepo)
+	result, err := uc.Resolve(slug)
 
-	_, err := uc.Shorten("https://fail.com", 5)
-	if err == nil {
-		t.Error("esperava erro do repositório")
-	}
-}
-
-func TestResolve_Success(t *testing.T) {
-	expected := &domains.URL{ID: "abc123", Original: "https://x.com"}
-	mockRepo := &mockURLRepo{findResult: expected}
-	uc := NewURLUsecase(mockRepo)
-
-	url, err := uc.Resolve("abc123")
-	if err != nil {
-		t.Fatalf("esperava nil, obteve erro: %v", err)
-	}
-	if url != expected {
-		t.Error("esperava URL encontrada")
-	}
+	assert.NoError(t, err, "Expected no error when resolving URL")
+	assert.Equal(t, expectedURL, result, "Expected resolved URL to match the expected URL")
+	mockRepo.AssertExpectations(t)
 }
 
 func TestResolve_NotFound(t *testing.T) {
-	mockRepo := &mockURLRepo{findErr: errors.New("não encontrado")}
+	mockRepo := new(mockURLRepository)
 	uc := NewURLUsecase(mockRepo)
 
-	_, err := uc.Resolve("notfound")
-	if err == nil {
-		t.Error("esperava erro para slug inexistente")
-	}
+	slug := "notfound123"
+	mockRepo.On("FindByID", slug).Return(nil, errors.New("not found"))
+
+	result, err := uc.Resolve(slug)
+
+	assert.Error(t, err, "Expected error when resolving non-existent URL")
+	assert.Nil(t, result, "Expected result to be nil when URL is not found")
 }

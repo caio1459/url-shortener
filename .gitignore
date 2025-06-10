@@ -18,3 +18,5 @@
 
 # Ignore uploads directories
 uploads/
+
+data/

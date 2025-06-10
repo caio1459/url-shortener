@@ -26,7 +26,10 @@ func (c *URLController) Shorten(ctx *gin.Context) {
 
 	slug, err := c.uc.Shorten(req.URL, req.ExpireInMinutes)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "internal error"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"error": "internal error",
+			"details": err.Error(),
+		})
 		return
 	}
 

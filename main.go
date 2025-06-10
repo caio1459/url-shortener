@@ -1,22 +1,10 @@
 package main
 
-import (
-	"url-shortener/config"
-	"url-shortener/internal/controllers"
-	"url-shortener/internal/infrastructure/mongo"
-	"url-shortener/internal/usecases"
-
-	"github.com/gin-gonic/gin"
-)
+import "url-shortener/app"
 
 func main() {
-	repo := mongo.NewMongoURLRepository(config.DB)
-	usecase := usecases.NewURLUsecase(repo)
-	controller := controllers.NewURLController(usecase)
-
-	r := gin.Default()
-	r.POST("/shorten", controller.Shorten)
-	r.GET("/:slug", controller.Redirect)
-
-	r.Run(":8080")
+	app := app.NewApp()
+	if err := app.Router.Run(":8080"); err != nil {
+		panic(err)
+	}
 }

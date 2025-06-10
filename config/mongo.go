@@ -11,7 +11,7 @@ import (
 )
 
 var (
-	DB *mongo.Database
+	db *mongo.Database
 )
 
 func init() {
@@ -26,5 +26,12 @@ func init() {
 		log.Fatal(err)
 	}
 
-	DB = client.Database(os.Getenv("DATABASE"))
+	db = client.Database(os.Getenv("DATABASE"))
+}
+
+func GetMongoDB() *mongo.Database {
+	if db == nil {
+		log.Fatal("MongoDB is not initialized")
+	}
+	return db
 }

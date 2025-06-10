@@ -7,22 +7,27 @@ import (
 	"url-shortener/pkg/sluggen"
 )
 
-type URLUsecase struct {
+type urlUsecase struct {
 	repo interfaces.URLRepository
 }
 
-func NewURLUsecase(repo interfaces.URLRepository) *URLUsecase {
-	return &URLUsecase{repo: repo}
+func NewURLUsecase(repo interfaces.URLRepository) interfaces.URLUsecase {
+	return &urlUsecase{repo: repo}
 }
 
-// Cria um novo URL encurtado
-func (uc *URLUsecase) Shorten(original string, expireInMinutes int) (string, error) {
+// Resolve implements interfaces.URLUsecase.
+func (u *urlUsecase) Resolve(slug string) (*domains.URL, error) {
+	return u.repo.FindByID(slug)
+}
+
+// Shorten implements interfaces.URLUsecase.
+func (u *urlUsecase) Shorten(original string, expireMinutes int) (string, error) {
 	ID := sluggen.GenerateSlug(6)
 
 	var expireAt *time.Time
-	if expireInMinutes > 0 {
+	if expireMinutes > 0 {
 		// Define a data de expiração com base no tempo atual e na duração especificada
-		t := time.Now().Add(time.Duration(expireInMinutes) * time.Minute)
+		t := time.Now().Add(time.Duration(expireMinutes) * time.Minute)
 		expireAt = &t
 	}
 
@@ -33,9 +38,5 @@ func (uc *URLUsecase) Shorten(original string, expireInMinutes int) (string, err
 		ExpireAt:  expireAt,
 	}
 
-	return ID, uc.repo.Save(url)
-}
-
-func (uc *URLUsecase) Resolve(slug string) (*domains.URL, error) {
-	return uc.repo.FindByID(slug)
+	return ID, u.repo.Save(url)
 }
